@@ -5,7 +5,8 @@ Created on Tue Jan 11 11:44:14 2022
 @author: Joe Silvan
 """
 
-from flask import jsonify
+import requests
+from flask import jsonify,request
 from multiprocessing import Pool
 import cx_Oracle
 import pandas as pd 
@@ -15,6 +16,7 @@ import warnings
 warnings.filterwarnings("ignore")
 import time
 import urllib
+import ast
 import json 
 import flask
 app = flask.Flask(__name__)
@@ -22,7 +24,7 @@ app = flask.Flask(__name__)
 
 
 class ETL_BOT():
-    def __init__(self,USERNAME,PASSWORD,HOSTNAME,PORT,SID,QUERY,SOURCE_TABLENAME,DES_TABLENAME,STATUS):
+    def __init__(self,USERNAME,PASSWORD,HOSTNAME,PORT,SID,QUERY,SOURCE_TABLENAME,DES_TABLENAME,STATUS,DEPLOYMENT_SERVER_ID):
         self.USERNAME=USERNAME
         self.PASSWORD=PASSWORD
         self.HOSTNAME=HOSTNAME
@@ -32,6 +34,7 @@ class ETL_BOT():
         self.SOURCE_TABLENAME=SOURCE_TABLENAME
         self.DES_TABLENAME=DES_TABLENAME
         self.STATUS=STATUS
+        self.DEPLOYMENT_SERVER_ID=DEPLOYMENT_SERVER_ID
         
     def connection_test(self):
         if self.STATUS=='Active':
@@ -96,32 +99,24 @@ class ETL_BOT():
 
 def use_etl_bot(configurations):
     # print('inside use etl bot')
-    bot = ETL_BOT(configurations[0],configurations[1],configurations[2],configurations[3],configurations[4],configurations[5],configurations[6],configurations[7],configurations[8])
+    bot = ETL_BOT(configurations[0],configurations[1],configurations[2],configurations[3],configurations[4],configurations[5],configurations[6],configurations[7],configurations[8],configurations[9])
     bot.connection_test()
 
-def config():
-    config = [['ADMIN_UAT','ADMIN_UAT','ewss2db-mum.csujspl2bezo.ap-south-1.rds.amazonaws.com','1521','ORCL','SELECT VERTICAL,PRIMARY_SOL_ID,SOL_ID FROM STG_ACNT_SMA','DES_TEST101','DES_TEST301'],
-                  ['ADMIN_UAT','ADMIN_UAT','ewss2db-mum.csujspl2bezo.ap-south-1.rds.amazonaws.com','1521','ORCL','SELECT VERTICAL,PRIMARY_SOL_ID,SOL_ID FROM STG_ACNT_SMA','DES_TEST102','DES_TEST302']]
-    connection = cx_Oracle.connect('ADMIN_UAT','ADMIN_UAT','ewss2db-mum.csujspl2bezo.ap-south-1.rds.amazonaws.com:1521/ORCL')
-    cur = connection.cursor()
-    config=cur.execute("select source_username,source_password,source_hostname,source_port,source_sid,query_text,source_table_name,destination_table_name,status from BOT_LIST_CONFIG_DETAILS where status='Active'").fetchall()
-    print('bot_li', config)
-    return config
 
-
-@app.route('/get_config', methods=['GET'])
+@app.route('/get_config', methods=['POST'])
 def config_get():
-    content = urllib.request.urlopen('http://127.0.0.1:5001/config_bot').read().decode('utf-8')
-    print('response from m2: ', content)
-    #string = string[::-1]
-    return jsonify({ 'config' : json.loads(content)})
+    a= request.host_url
+    paras = {'a':a}
+    content = requests.post(url='http://127.0.0.1:5000/config_bot',json=paras)
+    result= json.loads(content.text)
+    return result
 
 
-@app.route('/start_platform', methods=['GET'])
+@app.route('/start_platform', methods=['POST'])
 def main():
     while True:
-        print('Platform starting')
-        configurations = config()
+        print('Platform starting  ', request.host_url)
+        configurations = config_get()
         print('total bots', len(configurations))
         p= Pool(len(configurations))
         p.map(use_etl_bot, configurations)
@@ -131,5 +126,6 @@ def main():
        
    
 if __name__ == '__main__':
-    app.run()
+    app.run(port=5001)
     
+
