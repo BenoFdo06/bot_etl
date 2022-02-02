@@ -19,7 +19,10 @@ import urllib
 import ast
 import json 
 import flask
+from flask_cors import CORS, cross_origin
 app = flask.Flask(__name__)
+CORS(app)
+app.config['CORS_HEADERS'] = 'Content-Type'
     
 
 
@@ -107,7 +110,7 @@ def use_etl_bot(configurations):
 def config_get():
     a= request.host_url
     paras = {'a':a}
-    content = requests.post(url='http://127.0.0.1:5000/config_bot',json=paras)
+    content = requests.post(url='http://192.168.1.214:6003/config_bot',json=paras)
     result= json.loads(content.text)
     return result
 
@@ -126,5 +129,5 @@ def main():
        
    
 if __name__ == '__main__':
-    app.run(port=5002)
+    app.run(host='192.168.1.214',port=6002)
     

@@ -13,10 +13,13 @@ import flask
 import json
 import requests
 from multiprocessing import Pool
+import pandas as pd
 
 
-
+from flask_cors import CORS, cross_origin
 app = flask.Flask(__name__)
+CORS(app)
+app.config['CORS_HEADERS'] = 'Content-Type'
 
 def connection_establish(USERNAME,PASSWORD,HOSTNAME,PORT,SID):
     connection = cx_Oracle.connect(USERNAME,PASSWORD,HOSTNAME+':'+PORT+'/'+SID)
@@ -88,10 +91,11 @@ def bot_stop():
 
 
 def bot_list():
-    connection = cx_Oracle.connect('ADMIN_UAT','ADMIN_UAT','ewss2db-mum.csujspl2bezo.ap-south-1.rds.amazonaws.com:1521/ORCL')
-    cur = connection.cursor()
-    bot_li=cur.execute("select * from BOT_LIST_CONFIG_DETAILS").fetchall()
-    return bot_li
+	connection = cx_Oracle.connect('ADMIN_UAT','ADMIN_UAT','ewss2db-mum.csujspl2bezo.ap-south-1.rds.amazonaws.com:1521/ORCL')
+	cur = connection.cursor()
+	SQL1="select bot_list_unique_id,bot_type,status from BOT_LIST_CONFIG_DETAILS"
+	bot_li=pd.read_sql_query(SQL1, con=connection)
+	return bot_li
 
 def active_bot_list():
     connection = cx_Oracle.connect('ADMIN_UAT','ADMIN_UAT','ewss2db-mum.csujspl2bezo.ap-south-1.rds.amazonaws.com:1521/ORCL')
@@ -101,9 +105,11 @@ def active_bot_list():
 
 @app.route('/list_bot',methods=['get'])
 def test():
-    res = active_bot_list()
-    print(res)
-    return 'list view'
+	res = bot_list()
+	df=pd.DataFrame(res)
+	res1= df.to_dict('records')
+	result = json.dumps(res1)
+	return result
 
 
 @app.route('/config_bot', methods=['POST'])
@@ -117,7 +123,7 @@ def config_bot():
 
 
 def assign_paltform_id(res):
-    print('res',type(res))
+    print('res',res)
     dynamic_url='http://'+res+'/start_platform'
     requests.post(url=dynamic_url)
     
@@ -139,7 +145,7 @@ def main():
 
 
 if __name__ == '__main__':
-    app.run()
+    app.run(host='192.168.1.214',port=6003)
     
     
     
